@@ -168,7 +168,7 @@ func (thisSchema *Schema) ListRaw(filter goext.Filter, paginator *goext.Paginato
 type listFunc func(tx goext.ITransaction) ([]map[string]interface{}, uint64, error)
 
 func (thisSchema *Schema) listImpl(context goext.Context, list listFunc) ([]interface{}, error) {
-	resourceType, ok := GlobRawTypes[thisSchema.ID()]
+	resourceType, ok := thisSchema.environment.rawTypes[thisSchema.ID()]
 	if !ok {
 		return nil, ErrMissingType
 	}
@@ -246,7 +246,7 @@ func (thisSchema *Schema) rawListToResourceList(rawList []interface{}) []interfa
 		return rawList
 	}
 	xRaw := reflect.ValueOf(rawList)
-	resources := reflect.MakeSlice(reflect.SliceOf(GlobTypes[thisSchema.ID()]), xRaw.Len(), xRaw.Len())
+	resources := reflect.MakeSlice(reflect.SliceOf(thisSchema.environment.types[thisSchema.ID()]), xRaw.Len(), xRaw.Len())
 	x := reflect.New(resources.Type())
 	x.Elem().Set(resources)
 	x = x.Elem()
@@ -261,7 +261,7 @@ func (thisSchema *Schema) rawListToResourceList(rawList []interface{}) []interfa
 
 func (thisSchema *Schema) rawToResource(xRaw reflect.Value) interface{} {
 	xRaw = xRaw.Elem()
-	resource := reflect.New(GlobTypes[thisSchema.ID()]).Elem()
+	resource := reflect.New(thisSchema.environment.types[thisSchema.ID()]).Elem()
 	setValue(resource.FieldByName(xRaw.Type().Name()), xRaw.Addr())
 	setValue(resource.FieldByName("Schema"), reflect.ValueOf(thisSchema))
 	setValue(resource.FieldByName("Logger"), reflect.ValueOf(NewLogger(thisSchema.environment)))
@@ -310,11 +310,11 @@ func (thisSchema *Schema) fetchImpl(id string, context goext.Context, fetch fetc
 	if err != nil {
 		return nil, err
 	}
-	resourceType, ok := GlobRawTypes[thisSchema.rawSchema.ID]
+	resourceType, ok := thisSchema.environment.rawTypes[thisSchema.rawSchema.ID]
 	if !ok {
 		return nil, fmt.Errorf("No type registered for schema: %s", thisSchema.rawSchema.ID)
 	}
-	rawResources := GlobRawTypes[thisSchema.ID()]
+	rawResources := thisSchema.environment.rawTypes[thisSchema.ID()]
 	resource := reflect.New(rawResources)
 
 	for i := 0; i < resourceType.NumField(); i++ {
