@@ -60,17 +60,26 @@ func NewTestRunner(pluginFileNames []string, printAllLogs bool, testFilter strin
 
 // Run runs go (plugin) test runner
 func (testRunner *TestRunner) Run() error {
+	// configure reporter
+	gomega.RegisterFailHandler(ginkgo.Fail)
+	t := &testing.T{}
+	reporter := NewReporter()
+
+	// run suites
+	var err error
+
 	for _, pluginFileName := range testRunner.pluginFileNames {
 		if !testRunner.fileNameFilter.MatchString(pluginFileName) {
 			continue
 		}
 
-		if err := testRunner.runSingle(pluginFileName); err != nil {
-			return err
+		if err = testRunner.runSingle(t, reporter, pluginFileName); err != nil {
+			break
 		}
 	}
 
-	return nil
+	reporter.Report()
+	return err
 }
 
 func dbConnString(name string) string {
@@ -129,8 +138,11 @@ func readTest(p *plugin.Plugin) (func(goext.IEnvironment), error) {
 	return testFn, nil
 }
 
-func (testRunner *TestRunner) runSingle(pluginFileName string) error {
+func (testRunner *TestRunner) runSingle(t ginkgo.GinkgoTestingT, reporter *Reporter, pluginFileName string) error {
 	log.Notice("Running Go (plugin) extensions test: %s", pluginFileName)
+
+	// inform reporter about test suite
+	reporter.Prepare(pluginFileName)
 
 	// load plugin
 	p, err := plugin.Open(pluginFileName)
@@ -218,12 +230,7 @@ func (testRunner *TestRunner) runSingle(pluginFileName string) error {
 	test(env)
 
 	// run test
-	gomega.RegisterFailHandler(ginkgo.Fail)
-
-	t := &testing.T{}
-
-	passed := ginkgo.RunSpecs(t, "Go Extensions Test Suite")
-	fmt.Println()
+	passed := ginkgo.RunSpecsWithCustomReporters(t, pluginFileName, []ginkgo.Reporter{reporter})
 
 	log.Notice("Go (plugin) extension test finished: %s", pluginFileName)
 
