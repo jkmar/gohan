@@ -144,6 +144,11 @@ func (thisEnvironment *Environment) Database() goext.IDatabase {
 	return thisEnvironment.extDatabase
 }
 
+// Http returns an implementation to IHttp interface
+func (thisEnvironment *Environment) Http() goext.IHttp {
+	return &Http{}
+}
+
 //bind sets environment bindings
 func (thisEnvironment *Environment) bind() {
 	thisEnvironment.extCore = NewCore(thisEnvironment)

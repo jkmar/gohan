@@ -93,7 +93,7 @@ func init() {
 
 				done := make(chan struct{})
 				go func() {
-					code, headers, body, err = gohanHTTP(ctx, method, url, rawHeaders, data, opaque)
+					code, headers, body, err = GohanHTTP(ctx, method, url, rawHeaders, data, opaque)
 					close(done)
 				}()
 
@@ -352,7 +352,7 @@ func init() {
 	RegisterInit(gohanUtilInit)
 }
 
-func gohanHTTP(ctx context.Context, method, rawURL string, headers map[string]interface{},
+func GohanHTTP(ctx context.Context, method, rawURL string, headers map[string]interface{},
 	postData interface{}, opaque bool) (int, http.Header, string, error) {
 
 	var reader io.Reader

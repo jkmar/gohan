@@ -26,6 +26,7 @@ type IEnvironment interface {
 	Schemas() ISchemas
 	Sync() ISync
 	Database() IDatabase
+	Http() IHttp
 
 	// state
 	Reset()
