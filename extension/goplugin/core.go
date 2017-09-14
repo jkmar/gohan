@@ -18,6 +18,7 @@ package goplugin
 import (
 	"github.com/cloudwan/gohan/extension"
 	"github.com/cloudwan/gohan/extension/goext"
+	"github.com/cloudwan/gohan/util"
 	"github.com/twinj/uuid"
 )
 
@@ -59,6 +60,12 @@ func (thisCore *Core) HandleEvent(event string, context goext.Context) error {
 // NewUUID create a new unique ID
 func (thisCore *Core) NewUUID() string {
 	return uuid.NewV4().String()
+}
+
+// Config gets parameter from config
+func (thisCore *Core) Config(key string, defaultValue interface{}) interface{} {
+	config := util.GetConfig()
+	return config.GetParam(key, defaultValue)
 }
 
 // NewCore allocates Core
