@@ -344,6 +344,17 @@ func (schema *Schema) Fetch(id string, context goext.Context) (interface{}, erro
 	return schema.rawToResource(xRaw), nil
 }
 
+// LockFetch fetches a resource by id.
+// Schema, Logger, Environment and pointer to raw resource are required fields in the resource
+func (schema *Schema) LockFetch(id string, context goext.Context, lockPolicy goext.LockPolicy) (interface{}, error) {
+	fetched, err := schema.LockFetchRaw(id, context, lockPolicy)
+	if err != nil {
+		return nil, err
+	}
+	xRaw := reflect.ValueOf(fetched)
+	return schema.rawToResource(xRaw), nil
+}
+
 func setValue(field, value reflect.Value) {
 	if value.IsValid() {
 		if value.Type() != field.Type() && field.Kind() == reflect.Slice { // empty slice has type []interface{}
