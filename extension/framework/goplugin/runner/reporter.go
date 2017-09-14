@@ -18,10 +18,11 @@ package runner
 import (
 	"fmt"
 
-	"github.com/onsi/ginkgo/config"
-	"github.com/onsi/ginkgo/types"
 	"time"
+
+	"github.com/onsi/ginkgo/config"
 	"github.com/onsi/ginkgo/reporters/stenographer"
+	"github.com/onsi/ginkgo/types"
 )
 
 const defaultStyle = "\x1b[0m"
@@ -64,39 +65,21 @@ func (reporter *Reporter) SpecSuiteDidEnd(summary *types.SuiteSummary) {
 func (reporter *Reporter) Prepare(description string) {
 	reporter.suites[description] = types.SuiteSummary{
 		SuiteDescription: description,
-		SuiteSucceeded: false,
-		SuiteID: "undefined",
+		SuiteSucceeded:   false,
+		SuiteID:          "undefined",
 		NumberOfSpecsBeforeParallelization: 0,
-		NumberOfTotalSpecs: 0,
-		NumberOfSpecsThatWillBeRun: 0,
-		NumberOfPendingSpecs: 0,
-		NumberOfSkippedSpecs: 0,
-		NumberOfPassedSpecs: 0,
-		NumberOfFailedSpecs: 0,
-		RunTime: time.Duration(0),
+		NumberOfTotalSpecs:                 0,
+		NumberOfSpecsThatWillBeRun:         0,
+		NumberOfPendingSpecs:               0,
+		NumberOfSkippedSpecs:               0,
+		NumberOfPassedSpecs:                0,
+		NumberOfFailedSpecs:                0,
+		RunTime:                            time.Duration(0),
 	}
 }
 
 func (reporter *Reporter) Report() {
 	fmt.Println("----------------------------------------")
-	fmt.Println("Reports:")
-	fmt.Println()
-
-	for _, suite := range reporter.suites {
-		fmt.Println("Suite description:", suite.SuiteDescription)
-		fmt.Println("Suite succeeded:", suite.SuiteSucceeded)
-		fmt.Println("Suite ID:", suite.SuiteID)
-		fmt.Println("Number of specs before parallelization:", suite.NumberOfSpecsBeforeParallelization)
-		fmt.Println("Number of total specs:", suite.NumberOfTotalSpecs)
-		fmt.Println("Number of specs that will be run:", suite.NumberOfSpecsThatWillBeRun)
-		fmt.Println("Number of pending specs:", suite.NumberOfPendingSpecs)
-		fmt.Println("Number of skipped specs:", suite.NumberOfSkippedSpecs)
-		fmt.Println("Number of passed specs:", suite.NumberOfPassedSpecs)
-		fmt.Println("Number of failed specs:", suite.NumberOfFailedSpecs)
-		fmt.Println("Run time:", suite.RunTime)
-		fmt.Println()
-	}
-	fmt.Println()
 
 	fmt.Println("Failures:")
 	fmt.Println()
@@ -137,8 +120,37 @@ func (reporter *Reporter) Report() {
 		case types.SpecStateFailed:
 			stenographer.AnnounceSpecFailed(&spec, configSuccinct, configFullTrace)
 		}
-
 	}
+
+	fmt.Println("Reports:")
+	fmt.Println()
+
+	index := 0
+
+	for _, suite := range reporter.suites {
+		index++
+		fmt.Printf("[%4d] ", index)
+		if suite.SuiteSucceeded {
+			fmt.Printf(greenColor+"%-64s"+defaultStyle, suite.SuiteDescription)
+		} else {
+			fmt.Printf(redColor+"%-64s"+defaultStyle, suite.SuiteDescription)
+		}
+		fmt.Printf(cyanColor+"total: %-4d%8s"+defaultStyle, suite.NumberOfTotalSpecs, "")
+		if suite.SuiteSucceeded {
+			fmt.Printf(greenColor+"passed: %-4d%8s"+defaultStyle, suite.NumberOfPassedSpecs, "")
+		} else {
+			fmt.Printf("passed: %-4d%8s", suite.NumberOfPassedSpecs, "")
+		}
+		if !suite.SuiteSucceeded {
+			fmt.Printf(redColor+"failed: %-4d%8s"+defaultStyle, suite.NumberOfFailedSpecs, "")
+		} else {
+			fmt.Printf("failed: %-4d%8s", suite.NumberOfFailedSpecs, "")
+		}
+		fmt.Printf("skipped: %-4d%8s", suite.NumberOfSkippedSpecs, "")
+		fmt.Printf("pending: %-4d%8s", suite.NumberOfPendingSpecs, "")
+		fmt.Printf("run time: %s\n", suite.RunTime)
+	}
+	fmt.Println()
 }
 
 func NewReporter() *Reporter {

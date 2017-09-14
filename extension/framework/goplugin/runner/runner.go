@@ -40,7 +40,7 @@ const (
 
 var log = logger.NewLogger()
 
-// TestRunner is a test runner for go (plugin) extensions
+// TestRunner is a test runner for go extensions
 type TestRunner struct {
 	pluginFileNames []string
 	verboseLogs     bool
@@ -58,7 +58,7 @@ func NewTestRunner(pluginFileNames []string, printAllLogs bool, testFilter strin
 	}
 }
 
-// Run runs go (plugin) test runner
+// Run runs go test runner
 func (testRunner *TestRunner) Run() error {
 	// configure reporter
 	gomega.RegisterFailHandler(ginkgo.Fail)
@@ -139,7 +139,7 @@ func readTest(p *plugin.Plugin) (func(goext.IEnvironment), error) {
 }
 
 func (testRunner *TestRunner) runSingle(t ginkgo.GinkgoTestingT, reporter *Reporter, pluginFileName string) error {
-	log.Notice("Running Go (plugin) extensions test: %s", pluginFileName)
+	log.Notice("Running Go extensions test: %s", pluginFileName)
 
 	// inform reporter about test suite
 	reporter.Prepare(pluginFileName)
@@ -185,13 +185,6 @@ func (testRunner *TestRunner) runSingle(t ginkgo.GinkgoTestingT, reporter *Repor
 	}
 
 	// create env
-	env := goplugin.NewEnvironment("go environment test", db, &middleware.FakeIdentity{}, noop.NewSync())
-
-	//if err := extManager.RegisterEnvironment(binary, env); err != nil {
-	//	return return fmt.Errorf("failed to register environment: %s", err)
-	//}
-
-	// load binaries
 	afterEach := func() error {
 		// reset DB
 		err = gohan_db.InitDBWithSchemas("sqlite3", dbConnString(testDBFile), true, false, false)
@@ -203,8 +196,15 @@ func (testRunner *TestRunner) runSingle(t ginkgo.GinkgoTestingT, reporter *Repor
 		return nil
 	}
 
+	env := goplugin.NewEnvironment("Go test environment", afterEach, nil, db, &middleware.FakeIdentity{}, noop.NewSync())
+
+	//if err := extension.GetManager().RegisterEnvironment(binary, env); err != nil {
+	//	return fmt.Errorf("failed to register environment: %s", err)
+	//}
+
+	// load binaries
 	for _, binary := range binaries {
-		_, err := env.Load(path+"/"+binary, afterEach)
+		_, err := env.Load(path + "/" + binary)
 
 		if err != nil {
 			return fmt.Errorf("failed to load test binary: %s", err)
@@ -232,7 +232,7 @@ func (testRunner *TestRunner) runSingle(t ginkgo.GinkgoTestingT, reporter *Repor
 	// run test
 	passed := ginkgo.RunSpecsWithCustomReporters(t, pluginFileName, []ginkgo.Reporter{reporter})
 
-	log.Notice("Go (plugin) extension test finished: %s", pluginFileName)
+	log.Notice("Go extension test finished: %s", pluginFileName)
 
 	if !passed {
 		return fmt.Errorf("go extensions test failed: %s", pluginFileName)
