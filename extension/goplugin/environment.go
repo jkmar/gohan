@@ -640,20 +640,6 @@ func (env *Environment) Reset() {
 	env.Start()
 }
 
-// ResetAllEnvironments reset all global variables then reset all environments independently
-func (env *Environment) ResetAllEnvironments() {
-	// reset globals
-	env.handlers = nil
-	env.schemaHandlers = nil
-	env.rawTypes = make(map[string]reflect.Type)
-
-	for _, env := range extension.GetManager().GetAllEnvironments() {
-		if environment, ok := env.(*Environment); ok {
-			environment.Reset()
-		}
-	}
-}
-
 // Clone makes a clone of the rawEnvironment
 func (env *Environment) Clone() extension.Environment {
 	clone := &Environment{
