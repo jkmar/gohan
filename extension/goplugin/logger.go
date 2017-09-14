@@ -21,16 +21,16 @@ import (
 	"fmt"
 )
 
-const logModule = "[goext]"
+const logModule = "[GOEXT]"
 
 // Logger is an implementation of ILogger
 type Logger struct {
-	environment *Environment
+	env *Environment
 }
 
 func (logger *Logger) dispatchLog(module string, level goext.Level, format string) {
 	log := gohan_log.NewLoggerForModule(module)
-	format = fmt.Sprintf("[%s] %s", logger.environment.traceID, format)
+	format = fmt.Sprintf("[%s] %s", logger.env.traceID, format)
 
 	switch level {
 	case goext.LevelCritical:
@@ -52,7 +52,7 @@ func (logger *Logger) dispatchLog(module string, level goext.Level, format strin
 
 func (logger *Logger) dispatchLogf(module string, level goext.Level, format string, args ...interface{}) {
 	log := gohan_log.NewLoggerForModule(module)
-	format = fmt.Sprintf("[%s] %s", logger.environment.traceID, format)
+	format = fmt.Sprintf("[%s] %s", logger.env.traceID, format)
 
 	switch level {
 	case goext.LevelCritical:
@@ -133,6 +133,6 @@ func (logger *Logger) Debugf(format string, args ...interface{}) {
 }
 
 // NewLogger allocates Logger
-func NewLogger(environment *Environment) goext.ILogger {
-	return &Logger{environment: environment}
+func NewLogger(env *Environment) goext.ILogger {
+	return &Logger{env: env}
 }

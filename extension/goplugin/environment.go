@@ -67,8 +67,8 @@ type EventSchemaPrioritizedSchemaHandlers map[string]SchemaPrioritizedSchemaHand
 // Environment golang based environment for gohan extensions
 type Environment struct {
 	initFns         map[string]func(goext.IEnvironment) error
-	beforeStartHook func() error
-	afterStopHook   func()
+	beforeStartHook func(env *Environment) error
+	afterStopHook   func(env *Environment)
 
 	extCore     goext.ICore
 	extLogger   goext.ILogger
@@ -91,21 +91,23 @@ type Environment struct {
 }
 
 // NewEnvironment create new gohan extension rawEnvironment based on context
-func NewEnvironment(name string, beforeStartHook func() error, afterStopHook func(), db gohan_db.DB, ident middleware.IdentityService, sync gohan_sync.Sync) *Environment {
+func NewEnvironment(name string, beforeStartHook func(env *Environment) error, afterStopHook func(env *Environment)) *Environment {
 	env := &Environment{
 		initFns:         map[string]func(goext.IEnvironment) error{},
 		beforeStartHook: beforeStartHook,
 		afterStopHook:   afterStopHook,
 
 		name:  name,
-		db:    db,
-		ident: ident,
-		sync:  sync,
+		db:    nil,
+		ident: nil,
+		sync:  nil,
 
 		rawTypes: make(map[string]reflect.Type),
 		types:    make(map[string]reflect.Type),
 	}
-	env.bind()
+	env.bindCore()
+	env.bindLogger()
+	env.bindSchemas()
 	return env
 }
 
@@ -135,16 +137,41 @@ func (env *Environment) Database() goext.IDatabase {
 }
 
 // Http returns an implementation to IHttp interface
-func (thisEnvironment *Environment) Http() goext.IHttp {
+func (env *Environment) Http() goext.IHttp {
 	return &Http{}
 }
 
-//bind sets environment bindings
-func (env *Environment) bind() {
+func (env *Environment) SetDatabase(db gohan_db.DB) {
+	env.db = db
+	env.bindDatabase()
+}
+
+func (env *Environment) SetIdentityService(ident middleware.IdentityService) {
+	env.ident = ident
+}
+
+func (env *Environment) SetSync(sync gohan_sync.Sync) {
+	env.sync = sync
+	env.bindSync()
+}
+
+func (env *Environment) bindCore() {
 	env.extCore = NewCore(env)
+}
+
+func (env *Environment) bindLogger() {
 	env.extLogger = NewLogger(env)
+}
+
+func (env *Environment) bindSchemas() {
 	env.extSchemas = NewSchemas(env)
+}
+
+func (env *Environment) bindSync() {
 	env.extSync = NewSync(env)
+}
+
+func (env *Environment) bindDatabase() {
 	env.extDatabase = NewDatabase(env)
 }
 
@@ -159,11 +186,16 @@ func (env *Environment) Start() error {
 
 	log.Debug("Starting go environment: %s", env.name)
 
+	// bind
+	env.bindCore()
+	env.bindLogger()
+	env.bindSchemas()
+
 	// Before start init
 	if env.beforeStartHook != nil {
 		log.Debug("Calling before start for go environment: %s", env.name)
 
-		if err = env.beforeStartHook(); err != nil {
+		if err = env.beforeStartHook(env); err != nil {
 			log.Error("Failed to call before start for go extension: %s; error: %s", env.name, err)
 			return err
 		}
@@ -171,16 +203,10 @@ func (env *Environment) Start() error {
 		log.Debug("Before start init is not set for go environment: %s", env.name)
 	}
 
-	// Manager
-	//env.manager = schema.GetManager()
-
-	// bind
-	env.bind()
-
-	// generate TraceID
+	// generate trace ID
 	env.traceID = uuid.NewV4().String()
 
-	// get init
+	// init extensions
 	log.Debug("Start go extension: %s", env.name)
 
 	for _, initFn := range env.initFns {
@@ -623,10 +649,18 @@ func (env *Environment) Stop() {
 	env.extSync = nil
 	env.extDatabase = nil
 
+	env.traceID = ""
+
+	env.handlers = nil
+	env.schemaHandlers = nil
+
+	env.rawTypes = make(map[string]reflect.Type)
+	env.types = make(map[string]reflect.Type)
+
 	// after stop
 	if env.afterStopHook != nil {
 		log.Debug("Calling after stop hook for go environment: %s", env.name)
-		env.afterStopHook()
+		env.afterStopHook(env)
 	} else {
 		log.Debug("After stop hook is not set for go environment: %s", env.name)
 	}
@@ -657,7 +691,9 @@ func (env *Environment) Clone() extension.Environment {
 		rawTypes: env.rawTypes,
 		types:    env.types,
 	}
-	clone.bind()
+	clone.bindCore()
+	clone.bindLogger()
+	clone.bindSchemas()
 	return clone
 }
 

@@ -32,10 +32,11 @@ import (
 	"github.com/cloudwan/gohan/sync/noop"
 	"github.com/onsi/ginkgo"
 	"github.com/onsi/gomega"
+	"github.com/satori/go.uuid"
 )
 
 const (
-	testDBFile = "test.db"
+	dbBaseFileName = "test.db"
 )
 
 var log = logger.NewLogger()
@@ -80,14 +81,6 @@ func (testRunner *TestRunner) Run() error {
 
 	reporter.Report()
 	return err
-}
-
-func dbConnString(name string) string {
-	return fmt.Sprintf("file:%s?mode=memory&cache=shared", name)
-}
-
-func dbConnect(connString string) (gohan_db.DB, error) {
-	return gohan_db.ConnectDB("sqlite3", connString, gohan_db.DefaultMaxOpenConn, options.Default())
 }
 
 func readSchemas(p *plugin.Plugin) ([]string, error) {
@@ -177,30 +170,35 @@ func (testRunner *TestRunner) runSingle(t ginkgo.GinkgoTestingT, reporter *Repor
 		return fmt.Errorf("failed to read binaries from '%s': %s", pluginFileName, err)
 	}
 
-	// connect db
-	db, err := dbConnect(dbConnString(testDBFile))
-
-	if err != nil {
-		return fmt.Errorf("failed to connect db: %s", err)
-	}
-
 	// create env
-	afterEach := func() error {
-		// reset DB
-		err = gohan_db.InitDBWithSchemas("sqlite3", dbConnString(testDBFile), true, false, false)
+	beforeStartHook := func(env *goplugin.Environment) error {
+		// db
+		dbFileName := dbBaseFileName + "_" + uuid.NewV4().String()
+		dbConnString := fmt.Sprintf("file:%s?mode=memory&cache=shared", dbFileName)
+		db, err := gohan_db.ConnectDB("sqlite3", dbConnString, gohan_db.DefaultMaxOpenConn, options.Default())
 
 		if err != nil {
+			return fmt.Errorf("failed to connect db: %s", err)
+		}
+
+		if err = gohan_db.InitDBConnWithSchemas(db, true, false, false); err != nil {
 			return fmt.Errorf("failed to init db: %s", err)
 		}
+
+		env.SetDatabase(db)
+
+		// identity service
+		ident := &middleware.FakeIdentity{}
+		env.SetIdentityService(ident)
+
+		// sync
+		sync := noop.NewSync()
+		env.SetSync(sync)
 
 		return nil
 	}
 
-	env := goplugin.NewEnvironment("Go test environment", afterEach, nil, db, &middleware.FakeIdentity{}, noop.NewSync())
-
-	//if err := extension.GetManager().RegisterEnvironment(binary, env); err != nil {
-	//	return fmt.Errorf("failed to register environment: %s", err)
-	//}
+	env := goplugin.NewEnvironment("Go test environment", beforeStartHook, nil)
 
 	// load binaries
 	for _, binary := range binaries {
