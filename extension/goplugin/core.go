@@ -45,6 +45,7 @@ func (thisCore *Core) TriggerEvent(event string, context goext.Context) error {
 	} else {
 		log.Panic("TriggerEvent: missing schema in context")
 	}
+	context["schema_id"] = schemaID
 
 	envManager := extension.GetManager()
 	return envManager.HandleEventInAllEnvironments(context, event, schemaID)
