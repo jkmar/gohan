@@ -33,6 +33,7 @@ import (
 	"github.com/onsi/ginkgo"
 	"github.com/onsi/gomega"
 	"github.com/satori/go.uuid"
+	"github.com/cloudwan/gohan/extension"
 )
 
 const (
@@ -154,7 +155,6 @@ func (testRunner *TestRunner) runSingle(t ginkgo.GinkgoTestingT, reporter *Repor
 	// get state
 	path := filepath.Dir(pluginFileName)
 	manager := schema.GetManager()
-	//extManager := extension.GetManager()
 
 	// load schemas
 	for _, schemaPath := range schemas {
@@ -198,7 +198,15 @@ func (testRunner *TestRunner) runSingle(t ginkgo.GinkgoTestingT, reporter *Repor
 		return nil
 	}
 
-	env := goplugin.NewEnvironment("Go test environment", beforeStartHook, nil)
+	// create env
+	envName := "Go test environment"
+
+	env := goplugin.NewEnvironment(envName, beforeStartHook, nil)
+
+	// register
+	if err := extension.GetManager().RegisterEnvironment(envName, env); err != nil {
+		return fmt.Errorf("failed to register environment: %s", err)
+	}
 
 	// load binaries
 	for _, binary := range binaries {
@@ -228,20 +236,19 @@ func (testRunner *TestRunner) runSingle(t ginkgo.GinkgoTestingT, reporter *Repor
 	test(env)
 
 	// run test
-	passed := ginkgo.RunSpecsWithCustomReporters(t, pluginFileName, []ginkgo.Reporter{reporter})
-
-	log.Notice("Go extension test finished: %s", pluginFileName)
-
-	if !passed {
-		return fmt.Errorf("go extensions test failed: %s", pluginFileName)
-	}
+	ginkgo.RunSpecsWithCustomReporters(t, pluginFileName, []ginkgo.Reporter{reporter})
 
 	// stop env
 	env.Stop()
 
+	// unregister
+	extension.GetManager().UnRegisterEnvironment(envName)
+
 	// clear state
 	manager.ClearExtensions()
 	schema.ClearManager()
+
+	log.Notice("Go extension test finished: %s", pluginFileName)
 
 	return nil
 }
