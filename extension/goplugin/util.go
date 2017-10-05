@@ -88,7 +88,9 @@ func resourceFromMap(context map[string]interface{}, rawType reflect.Type) (res 
 			return nil, fmt.Errorf("missing tag 'json' for resource %s field %s", rawType.Name(), fieldType.Name)
 		}
 		kind := fieldType.Type.Kind()
-		if strings.Contains(fieldType.Type.String(), "goext.Null") {
+		if kind == reflect.Interface {
+			field.Set(reflect.ValueOf(context[propertyName]))
+		} else if strings.Contains(fieldType.Type.String(), "goext.Null") {
 			if context[propertyName] == nil {
 				field.FieldByName("Valid").SetBool(false)
 			} else {
