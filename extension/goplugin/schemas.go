@@ -262,12 +262,28 @@ func (schema *Schema) StateFetchRaw(id string, requestContext goext.Context) (go
 	return tx.StateFetch(goext.GetContext(requestContext), schema, goext.Filter{"id": id})
 }
 
+// FetchFilterRaw returns a pointer to raw resource, containing db annotations
+func (schema *Schema) FetchFilterRaw(filter goext.Filter, requestContext goext.Context) (interface{}, error) {
+	return schema.fetchImplFilter(filter, requestContext, func(ctx context.Context, tx goext.ITransaction, filter goext.Filter) (map[string]interface{}, error) {
+		return tx.Fetch(ctx, schema, filter)
+	})
+}
+
+// LockFetchFilterRaw returns a pointer to locked raw resource, containing db annotations
+func (schema *Schema) LockFetchFilterRaw(filter goext.Filter, requestContext goext.Context, policy goext.LockPolicy) (interface{}, error) {
+	return schema.fetchImplFilter(filter, requestContext, func(ctx context.Context, tx goext.ITransaction, filter goext.Filter) (map[string]interface{}, error) {
+		return tx.LockFetch(ctx, schema, filter, policy)
+	})
+}
+
 type fetchFunc func(ctx context.Context, tx goext.ITransaction, filter goext.Filter) (map[string]interface{}, error)
 
 func (schema *Schema) fetchImpl(id string, requestContext goext.Context, fetch fetchFunc) (interface{}, error) {
-	tx := mustGetOpenTransactionFromContext(requestContext)
+	return schema.fetchImplFilter(goext.Filter{"id": id}, requestContext, fetch)
+}
 
-	filter := goext.Filter{"id": id}
+func (schema *Schema) fetchImplFilter(filter goext.Filter, requestContext goext.Context, fetch fetchFunc) (interface{}, error) {
+	tx := mustGetOpenTransactionFromContext(requestContext)
 
 	data, err := fetch(goext.GetContext(requestContext), tx, filter)
 
@@ -281,10 +297,10 @@ func (schema *Schema) fetchImpl(id string, requestContext goext.Context, fetch f
 	return schema.ResourceFromMap(data)
 }
 
-// Fetch fetches a resource by id.
-// Schema, Logger, Environment and pointer to raw resource are required fields in the resource
-func (schema *Schema) Fetch(id string, context goext.Context) (interface{}, error) {
-	fetched, err := schema.FetchRaw(id, context)
+type rawFetchFunc func() (interface{}, error)
+
+func (schema *Schema) fetch(fetch rawFetchFunc) (interface{}, error) {
+	fetched, err := fetch()
 	if err != nil {
 		return nil, err
 	}
@@ -292,15 +308,34 @@ func (schema *Schema) Fetch(id string, context goext.Context) (interface{}, erro
 	return schema.rawToResource(xRaw)
 }
 
+// Fetch fetches a resource by id.
+// Schema, Logger, Environment and pointer to raw resource are required fields in the resource
+func (schema *Schema) Fetch(id string, context goext.Context) (interface{}, error) {
+	return schema.fetch(func() (interface{}, error) {
+		return schema.FetchRaw(id, context)
+	})
+}
+
+// FetchFilter returns a pointer to resource derived from BaseResource
+func (schema *Schema) FetchFilter(filter goext.Filter, context goext.Context) (interface{}, error) {
+	return schema.fetch(func() (interface{}, error) {
+		return schema.FetchFilterRaw(filter, context)
+	})
+}
+
 // LockFetch fetches a resource by id.
 // Schema, Logger, Environment and pointer to raw resource are required fields in the resource
 func (schema *Schema) LockFetch(id string, context goext.Context, lockPolicy goext.LockPolicy) (interface{}, error) {
-	fetched, err := schema.LockFetchRaw(id, context, lockPolicy)
-	if err != nil {
-		return nil, err
-	}
-	xRaw := reflect.ValueOf(fetched)
-	return schema.rawToResource(xRaw)
+	return schema.fetch(func() (interface{}, error) {
+		return schema.LockFetchRaw(id, context, lockPolicy)
+	})
+}
+
+// LockFetchFilter returns a pointer to locked resource derived from BaseResource, containing db annotations
+func (schema *Schema) LockFetchFilter(filter goext.Filter, context goext.Context, lockPolicy goext.LockPolicy) (interface{}, error) {
+	return schema.fetch(func() (interface{}, error) {
+		return schema.LockFetchFilterRaw(filter, context, lockPolicy)
+	})
 }
 
 func setValue(field, value reflect.Value) {
