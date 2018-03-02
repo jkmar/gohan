@@ -419,10 +419,6 @@ func (p *Policy) Check(action string, authorization Authorization, data map[stri
 		}
 	}
 
-	if p.Resource.PropertiesFilter.AllowsAll() {
-		log.Debug("No properties in resource policy. Allowing all property access")
-		return nil
-	}
 	for key := range data {
 		if key == "tenant_name" {
 			continue

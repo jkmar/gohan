@@ -15,23 +15,25 @@ func (f *FilterFactory) CreateFilterFromProperties(visible, hidden []string) (*F
 		return nil, err
 	}
 
-	return &Filter{filterStrategy: strategy}, nil
+	return &Filter{predicate: strategy}, nil
 }
 
 func CreateExcludeAllFilter() *Filter {
-	return &Filter{filterStrategy: &excludeAllFilter{}}
+	return &Filter{predicate: &excludeAllPredicate{}}
 }
 
-func (f *FilterFactory) createFilterStrategy() (FilterStrategy, error) {
+func (f *FilterFactory) createFilterStrategy() (Predicate, error) {
 	switch f.getFilterType() {
 	case All:
-		return &includeAllFilter{}, nil
+		return &includeAllPredicate{}, nil
 	case Visible:
-		return &visibleFilter{properties: sliceToSet(f.visible)}, nil
+		return &visiblePredicate{properties: sliceToSet(f.visible)}, nil
 	case Hidden:
-		return &hiddenFilter{properties: sliceToSet(f.hidden)}, nil
-	default:
+		return &hiddenPredicate{properties: sliceToSet(f.hidden)}, nil
+	case Invalid:
 		return nil, errors.New("Cannot have filter with both visible and hidden properties")
+	default:
+		return nil, errors.New("Unknown filter type")
 	}
 }
 
@@ -66,13 +68,13 @@ func sliceToSet(keys []string) map[string]bool {
 }
 
 type Filter struct {
-	filterStrategy FilterStrategy
+	predicate Predicate
 }
 
 func (f *Filter) RemoveHiddenKeysFromMap(data map[string]interface{}) map[string]interface{} {
 	result := make(map[string]interface{})
 	for key, value := range data {
-		if f.filterStrategy.Filter(key) {
+		if f.predicate.Predicate(key) {
 			result[key] = value
 		}
 	}
@@ -82,7 +84,7 @@ func (f *Filter) RemoveHiddenKeysFromMap(data map[string]interface{}) map[string
 func (f *Filter) RemoveHiddenKeysFromSlice(data []string) []string {
 	result := make([]string, 0)
 	for _, key := range data {
-		if f.filterStrategy.Filter(key) {
+		if f.predicate.Predicate(key) {
 			result = append(result, key)
 		}
 	}
@@ -90,44 +92,39 @@ func (f *Filter) RemoveHiddenKeysFromSlice(data []string) []string {
 }
 
 func (f *Filter) IsForbidden(key string) bool {
-	return !f.filterStrategy.Filter(key)
+	return !f.predicate.Predicate(key)
 }
 
-func (f *Filter) AllowsAll() bool {
-	_, ok := f.filterStrategy.(*includeAllFilter)
-	return ok
+type Predicate interface {
+	Predicate(string) bool
 }
 
-type FilterStrategy interface {
-	Filter(string) bool
+type includeAllPredicate struct {
 }
 
-type includeAllFilter struct {
-}
-
-func (i *includeAllFilter) Filter(string) bool {
+func (i *includeAllPredicate) Predicate(string) bool {
 	return true
 }
 
-type excludeAllFilter struct {
+type excludeAllPredicate struct {
 }
 
-func (e *excludeAllFilter) Filter(string) bool {
+func (e *excludeAllPredicate) Predicate(string) bool {
 	return false
 }
 
-type visibleFilter struct {
+type visiblePredicate struct {
 	properties map[string]bool
 }
 
-func (v *visibleFilter) Filter(s string) bool {
+func (v *visiblePredicate) Predicate(s string) bool {
 	return v.properties[s]
 }
 
-type hiddenFilter struct {
+type hiddenPredicate struct {
 	properties map[string]bool
 }
 
-func (h *hiddenFilter) Filter(s string) bool {
+func (h *hiddenPredicate) Predicate(s string) bool {
 	return !h.properties[s]
 }

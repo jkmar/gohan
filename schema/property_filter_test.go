@@ -13,6 +13,11 @@ var _ = Describe("Property filter tests", func() {
 			_, err := filterFactory.CreateFilterFromProperties([]string{"a"}, []string{"b"})
 			Expect(err).To(HaveOccurred())
 		})
+
+		It("Should create filter factory for valid parameters", func() {
+			_, err := filterFactory.CreateFilterFromProperties(nil, nil)
+			Expect(err).ToNot(HaveOccurred())
+		})
 	})
 
 	Describe("Filter tests", func() {
@@ -23,7 +28,7 @@ var _ = Describe("Property filter tests", func() {
 			key        = "a"
 		)
 
-		Context("includeAllFilter tests", func() {
+		Context("includeAllPredicate tests", func() {
 			BeforeEach(func() {
 				var err error
 				filter, err = filterFactory.CreateFilterFromProperties(nil, nil)
@@ -47,13 +52,9 @@ var _ = Describe("Property filter tests", func() {
 			It("Should filter key", func() {
 				Expect(filter.IsForbidden(key)).To(BeFalse())
 			})
-
-			It("Should allow all", func() {
-				Expect(filter.AllowsAll()).To(BeTrue())
-			})
 		})
 
-		Context("excludeAllFilter tests", func() {
+		Context("excludeAllPredicate tests", func() {
 			BeforeEach(func() {
 				filter = CreateExcludeAllFilter()
 			})
@@ -75,13 +76,9 @@ var _ = Describe("Property filter tests", func() {
 			It("Should filter key", func() {
 				Expect(filter.IsForbidden(key)).To(BeTrue())
 			})
-
-			It("Should not allow all", func() {
-				Expect(filter.AllowsAll()).To(BeFalse())
-			})
 		})
 
-		Context("visibleFilter tests", func() {
+		Context("visiblePredicate tests", func() {
 			BeforeEach(func() {
 				var err error
 				filter, err = filterFactory.CreateFilterFromProperties([]string{key}, nil)
@@ -105,13 +102,9 @@ var _ = Describe("Property filter tests", func() {
 			It("Should filter key", func() {
 				Expect(filter.IsForbidden(key)).To(BeFalse())
 			})
-
-			It("Should not allow all", func() {
-				Expect(filter.AllowsAll()).To(BeFalse())
-			})
 		})
 
-		Context("hiddenFilter tests", func() {
+		Context("hiddenPredicate tests", func() {
 			BeforeEach(func() {
 				var err error
 				filter, err = filterFactory.CreateFilterFromProperties(nil, []string{key})
@@ -134,10 +127,6 @@ var _ = Describe("Property filter tests", func() {
 
 			It("Should filter key", func() {
 				Expect(filter.IsForbidden(key)).To(BeTrue())
-			})
-
-			It("Should not allow all", func() {
-				Expect(filter.AllowsAll()).To(BeFalse())
 			})
 		})
 	})
