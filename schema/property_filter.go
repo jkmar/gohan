@@ -74,7 +74,7 @@ type Filter struct {
 func (f *Filter) RemoveHiddenKeysFromMap(data map[string]interface{}) map[string]interface{} {
 	result := make(map[string]interface{})
 	for key, value := range data {
-		if f.predicate.Predicate(key) {
+		if f.predicate.Validate(key) {
 			result[key] = value
 		}
 	}
@@ -84,7 +84,7 @@ func (f *Filter) RemoveHiddenKeysFromMap(data map[string]interface{}) map[string
 func (f *Filter) RemoveHiddenKeysFromSlice(data []string) []string {
 	result := make([]string, 0)
 	for _, key := range data {
-		if f.predicate.Predicate(key) {
+		if f.predicate.Validate(key) {
 			result = append(result, key)
 		}
 	}
@@ -92,24 +92,29 @@ func (f *Filter) RemoveHiddenKeysFromSlice(data []string) []string {
 }
 
 func (f *Filter) IsForbidden(key string) bool {
-	return !f.predicate.Predicate(key)
+	return !f.predicate.Validate(key)
+}
+
+func (f *Filter) IsIncludeAllFilter() bool {
+	_, ok := f.predicate.(*includeAllPredicate)
+	return ok
 }
 
 type Predicate interface {
-	Predicate(string) bool
+	Validate(string) bool
 }
 
 type includeAllPredicate struct {
 }
 
-func (i *includeAllPredicate) Predicate(string) bool {
+func (i *includeAllPredicate) Validate(string) bool {
 	return true
 }
 
 type excludeAllPredicate struct {
 }
 
-func (e *excludeAllPredicate) Predicate(string) bool {
+func (e *excludeAllPredicate) Validate(string) bool {
 	return false
 }
 
@@ -117,7 +122,7 @@ type visiblePredicate struct {
 	properties map[string]bool
 }
 
-func (v *visiblePredicate) Predicate(s string) bool {
+func (v *visiblePredicate) Validate(s string) bool {
 	return v.properties[s]
 }
 
@@ -125,6 +130,6 @@ type hiddenPredicate struct {
 	properties map[string]bool
 }
 
-func (h *hiddenPredicate) Predicate(s string) bool {
+func (h *hiddenPredicate) Validate(s string) bool {
 	return !h.properties[s]
 }

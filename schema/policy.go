@@ -266,13 +266,21 @@ func NewPolicy(raw interface{}) (*Policy, error) {
 }
 
 func getStringSliceFromMap(data map[string]interface{}, key string) []string {
+	switch slice := data[key].(type) {
+	case []string:
+		return slice
+	case []interface{}:
+		return getStringSliceFromRawSlice(slice)
+	default:
+		return nil
+	}
+}
+
+func getStringSliceFromRawSlice(data []interface{}) []string {
 	var result []string
-	rawSlice, ok := data[key].([]interface{})
-	if ok {
-		for _, rawItem := range rawSlice {
-			if item, ok := rawItem.(string); ok {
-				result = append(result, item)
-			}
+	for _, rawItem := range data {
+		if item, ok := rawItem.(string); ok {
+			result = append(result, item)
 		}
 	}
 	return result
@@ -419,6 +427,10 @@ func (p *Policy) Check(action string, authorization Authorization, data map[stri
 		}
 	}
 
+	if p.Resource.PropertiesFilter.IsIncludeAllFilter() {
+		log.Debug("No properties in resource policy. Allowing all property access")
+		return nil
+	}
 	for key := range data {
 		if key == "tenant_name" {
 			continue

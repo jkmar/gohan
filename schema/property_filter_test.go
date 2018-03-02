@@ -52,6 +52,10 @@ var _ = Describe("Property filter tests", func() {
 			It("Should filter key", func() {
 				Expect(filter.IsForbidden(key)).To(BeFalse())
 			})
+
+			It("Should be includeAllFilter", func() {
+				Expect(filter.IsIncludeAllFilter()).To(BeTrue())
+			})
 		})
 
 		Context("excludeAllPredicate tests", func() {
@@ -75,6 +79,10 @@ var _ = Describe("Property filter tests", func() {
 
 			It("Should filter key", func() {
 				Expect(filter.IsForbidden(key)).To(BeTrue())
+			})
+
+			It("Should not be includeAllFilter", func() {
+				Expect(filter.IsIncludeAllFilter()).To(BeFalse())
 			})
 		})
 
@@ -102,6 +110,10 @@ var _ = Describe("Property filter tests", func() {
 			It("Should filter key", func() {
 				Expect(filter.IsForbidden(key)).To(BeFalse())
 			})
+
+			It("Should not be includeAllFilter", func() {
+				Expect(filter.IsIncludeAllFilter()).To(BeFalse())
+			})
 		})
 
 		Context("hiddenPredicate tests", func() {
@@ -127,6 +139,10 @@ var _ = Describe("Property filter tests", func() {
 
 			It("Should filter key", func() {
 				Expect(filter.IsForbidden(key)).To(BeTrue())
+			})
+
+			It("Should not be includeAllFilter", func() {
+				Expect(filter.IsIncludeAllFilter()).To(BeFalse())
 			})
 		})
 	})
